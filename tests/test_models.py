@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -136,6 +136,20 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, new_description)
 
+    def test_update_a_product_without_id(self):
+        """It should Raise an Error when update without id """
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        self.assertIsNotNone(product.id)
+
+        new_description = "This is new description"
+        product.id = None
+        product.description = new_description
+        with self.assertRaises(DataValidationError) as context:
+            product.update()
+        self.assertEqual(str(context.exception), "Update called with empty ID field")
+
     def test_delete_a_product(self):
         """It should Delete a Product"""
         product = ProductFactory()
@@ -203,3 +217,16 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(target_products.count(), count)
         for product in target_products:
             self.assertEqual(product.category, target_category)
+
+    def test_find_product_by_price(self):
+        """It should Find Products by Price"""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        target_price = products[0].price
+        count = len([product for product in products if product.price == target_price])
+
+        target_products = Product.find_by_price(target_price)
+        self.assertEqual(target_products.count(), count)
+        for product in target_products:
+            self.assertEqual(product.price, target_price)
