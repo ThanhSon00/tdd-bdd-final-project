@@ -20,7 +20,7 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -98,10 +98,28 @@ def create_products():
 # L I S T   A L L   P R O D U C T S
 ######################################################################
 
-#
-# PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
-#
+@app.route("/products", methods=["GET"])
+def list_products():
+    """Returns a list of Products"""
+    app.logger.info("Request to list Products...")
 
+    products = []
+    name = request.args.get("name")
+    available = request.args.get("available")
+    category = request.args.get("category")
+    if name:
+        products = Product.find_by_name(name)
+    elif category:
+        category_value = getattr(Category, category.upper())
+        products = Product.find_by_category(category_value)
+    elif available:
+        available_value = available.lower() in ["true", "yes", "1"]
+        products = Product.find_by_availability(available_value)
+    else:
+        products = Product.all()
+
+    results = [product.serialize() for product in products]
+    return results, status.HTTP_200_OK
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
@@ -151,7 +169,21 @@ def update_products(product_id):
 # D E L E T E   A   P R O D U C T
 ######################################################################
 
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """
+    Delete a Product
 
-#
-# PLACE YOUR CODE TO DELETE A PRODUCT HERE
-#
+    This endpoint will delete a Product based the id specified in the path
+    """
+    app.logger.info("Request to Delete a product with id [%s]", product_id)
+
+    # use the Product.find() method to retrieve the product by the product_id
+    product = Product.find(product_id)
+    # if found, call the delete() method on the product
+    if product:
+        product.delete()
+    # return and empty body ("") with a return code of status.HTTP_204_NO_CONTENT
+
+    return "", status.HTTP_204_NO_CONTENT
+
